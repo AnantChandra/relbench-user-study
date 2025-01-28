@@ -297,13 +297,11 @@ if __name__ == '__main__':
     
     # Get task tables
     val_table = task.get_table("val")
-    test_table = task.get_table("test")
     
     # Update the task tables with our matched subset
     val_table.df = val_task_df
-    test_table.df = test_task_df
     
     # Evaluate
     print(f'Val: {task.evaluate(val_pred, val_table)}')
     print()
-    print(f'Test: {task.evaluate(test_pred, test_table)}')
+    print(f'Test: {test_pred}')
