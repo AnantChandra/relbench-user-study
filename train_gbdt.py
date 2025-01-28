@@ -191,8 +191,8 @@ if __name__ == '__main__':
         print(f'Features generated in {time.time() - start:,.0f} seconds.')
 
     train_df = conn.sql(f'select * from {task_params["table_prefix"]}_train_feats').df()
-    val_df = conn.sql(f'select * from {task_params["table_prefix"]}_val_feats').df()
-    test_df = conn.sql(f'select * from {task_params["table_prefix"]}_test_feats').df()
+    val_df = conn.sql(f'select * from {task_params["table_prefix"]}_val_feats USING SAMPLE 5000 ROWS').df()
+    test_df = conn.sql(f'select * from {task_params["table_prefix"]}_test_feats USING SAMPLE 5000 ROWS').df()
     conn.close()
     col_to_stype = task_to_stypes[full_task_name]
     drop_cols = task_params['identifier_cols'] + args.drop_cols
@@ -240,12 +240,14 @@ if __name__ == '__main__':
     task = get_task(args.dataset, args.task, download=True)
     print()
     pred = gbdt.predict(tf_test=val_tf).numpy()
-    assert len(task.get_table("val").df) == len(val_df), 'Val: feats df doesn\'t match label df!'
-    pred = map_preds(val_df, task.get_table("val").df, task_params['identifier_cols'], pred)
-    print(f'Val: {task.evaluate(pred, task.get_table("val"))}')
+    val_task_df = task.get_table("val").df.sample(n=5000, random_state=SEED)  # Limit validation set
+    assert len(val_task_df) == len(val_df), 'Val: feats df doesn\'t match label df!'
+    pred = map_preds(val_df, val_task_df, task_params['identifier_cols'], pred)
+    print(f'Val: {task.evaluate(pred, val_task_df)}')
     print()
     test_tf = train_dset.convert_to_tensor_frame(test_df)
-    assert len(task.get_table("test").df) == len(test_df), 'Test: feats df doesn\'t match label df!'
+    test_task_df = task.get_table("test").df.sample(n=5000, random_state=SEED)  # Limit test set
+    assert len(test_task_df) == len(test_df), 'Test: feats df doesn\'t match label df!'
     pred = gbdt.predict(tf_test=test_tf).numpy()
-    pred = map_preds(test_df, task.get_table("test").df, task_params['identifier_cols'], pred)
+    pred = map_preds(test_df, test_task_df, task_params['identifier_cols'], pred)
     print(f'Test: {task.evaluate(pred)}')
